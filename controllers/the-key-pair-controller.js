@@ -49,18 +49,14 @@ function saveKeyPairToDatabase(id, publicKey, privateKey) {
 
     let database;
     try {
-        // Чтение существующего файла или создание нового объекта
         const data = fs.readFileSync(databasePath, 'utf8');
         database = JSON.parse(data);
     } catch (error) {
-        // Если файл не существует, создаем пустой объект
         database = {};
     }
 
-    // Добавление новой пары ключей с уникальным ID
     database[id] = { publicKey, privateKey };
 
-    // Запись обновленных данных обратно в файл
     fs.writeFileSync(databasePath, JSON.stringify(database, null, 2), 'utf8');
 }
 

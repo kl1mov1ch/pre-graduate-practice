@@ -2,7 +2,6 @@ const crypto = require('crypto');
 const { exec } = require('child_process');
 
 const EDSController = {
-    // Метод для вычисления ЭЦП
     eds_calculation: async (req, res) => {
         try {
             const { text, privateKey } = req.body;
@@ -28,7 +27,6 @@ const EDSController = {
         }
     },
 
-    // Метод для проверки подписи
     eds_verification: async (req, res) => {
         try {
             const { text, signature, publicKey } = req.body;
@@ -49,7 +47,6 @@ const EDSController = {
         }
     },
 
-    // Метод для шифрования текста
     eds_encrypt: async (req, res) => {
         try {
             const { text, privateKey } = req.body;
@@ -68,7 +65,6 @@ const EDSController = {
         }
     },
 
-    // Метод для дешифрования текста
     eds_decrypt: async (req, res) => {
         try {
             const { encryptedText, publicKey } = req.body;
