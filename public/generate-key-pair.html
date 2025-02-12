@@ -23,6 +23,12 @@
         .btn-block {
             width: 100%;
         }
+        .result-box {
+            background: #e9ecef;
+            padding: 10px;
+            border-radius: 5px;
+            word-wrap: break-word;
+        }
     </style>
 </head>
 <body class="bg-light">
@@ -46,34 +52,47 @@
         </form>
         <div class="mt-4">
             <h5>📜 Результат:</h5>
-            <p><strong>Приватный ключ:</strong> <span id="privateKeyResult" class="text-success"></span></p>
-            <p><strong>Публичный ключ:</strong> <span id="publicKeyResult" class="text-success"></span></p>
+            <div class="result-box">
+                <strong>Приватный ключ:</strong>
+                <pre id="privateKeyResult" class="text-success"></pre>
+            </div>
+            <div class="result-box mt-2">
+                <strong>Публичный ключ:</strong>
+                <pre id="publicKeyResult" class="text-success"></pre>
+            </div>
         </div>
     </div>
 </div>
-
 <script>
     document.getElementById('generateKeyPairForm').addEventListener('submit', async (e) => {
         e.preventDefault();
-        const formData = new FormData(e.target);
-        const data = Object.fromEntries(formData.entries());
+
+        const algorithm = document.getElementById('algorithm').value;
+        const keySize = document.getElementById('keySize').value;
+
+        if (algorithm === 'rsa' && (!keySize || keySize < 1024 || keySize > 4096)) {
+            alert('Для алгоритма RSA укажите размер ключа от 1024 до 4096 бит.');
+            return;
+        }
 
         try {
+            // Отправляем POST-запрос на сервер
             const response = await fetch('/generate-key-pair', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data)
+                body: JSON.stringify({ algorithm, keySize })
             });
-            const result = await response.json();
 
+            const result = await response.json();
             if (response.ok) {
-                document.getElementById('privateKeyResult').innerText = result.privateKey;
-                document.getElementById('publicKeyResult').innerText = result.publicKey;
+                // Выводим результаты в соответствующие элементы
+                document.getElementById('privateKeyResult').textContent = result.privateKey || 'Приватный ключ не сгенерирован';
+                document.getElementById('publicKeyResult').textContent = result.publicKey || 'Публичный ключ не сгенерирован';
             } else {
                 alert('Ошибка генерации пары ключей: ' + result.error);
             }
         } catch (error) {
-            alert('Произошла ошибка: ' + error.message);
+            alert('Произошла ошибка при отправке запроса: ' + error.message);
         }
     });
 </script>

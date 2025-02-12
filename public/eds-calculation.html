@@ -3,94 +3,154 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Генератор хэша</title>
+    <title>ЭЦП Генератор и Проверка</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.3/font/bootstrap-icons.css">
     <style>
-        body {
-            background-color: #f8f9fa;
-        }
-        .card {
-            border-radius: 15px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-            padding: 20px;
-            background: #fff;
-        }
-
-        .result-box {
-            background: #e9ecef;
-            padding: 10px;
-            border-radius: 10px;
-            word-wrap: break-word;
-        }
-        .form-label {
-            font-weight: 500;
-        }
-        .form-control, .form-select {
-            border-radius: 10px;
-            padding: 10px;
-        }
-        .text-success {
-            color: #28a745 !important;
-        }
-        .text-info {
-            color: #17a2b8 !important;
-        }
-        .text-danger {
-            color: #dc3545 !important;
-        }
+        body { background-color: #f8f9fa; }
+        .card { border-radius: 15px; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); padding: 20px; background: #fff; }
+        .result-box { background: #e9ecef; padding: 10px; border-radius: 10px; word-wrap: break-word; }
+        .form-label { font-weight: 500; }
+        .form-control, .form-select { border-radius: 10px; padding: 10px; }
     </style>
 </head>
 <body class="bg-light">
 <div class="container py-5">
     <div class="card shadow p-4">
-        <h1 class="text-center mb-4">🔐 Генератор хэша</h1>
-        <form id="hashTextForm">
+        <h1 class="text-center mb-4">🔐 ЭЦП Генератор и Проверка</h1>
+        <form id="edsForm">
             <div class="mb-3">
-                <label for="text" class="form-label">Введите текст:</label>
+                <label class="form-label">Введите текст:</label>
                 <textarea class="form-control" id="text" name="text" rows="3" required></textarea>
             </div>
             <div class="mb-3">
-                <label for="algorithm" class="form-label">Выберите алгоритм:</label>
-                <select class="form-select" id="algorithm" name="algorithm" required>
-                    <option value="sha256">SHA-256</option>
-                    <option value="sha512">SHA-512</option>
-                    <option value="md5">MD5</option>
-                </select>
+                <label class="form-label">Закрытый ключ (для подписи):</label>
+                <textarea class="form-control" id="privateKey" name="privateKey" rows="3"></textarea>
             </div>
-            <button type="submit" class="btn btn-primary w-100">🔑 Сгенерировать хэш</button>
+            <div class="mb-3">
+                <label class="form-label">Публичный ключ (для проверки):</label>
+                <textarea class="form-control" id="publicKey" name="publicKey" rows="3"></textarea>
+            </div>
+            <button type="button" class="btn btn-primary w-100" id="signButton">✍ Подписать</button>
+            <button type="button" class="btn btn-success w-100 mt-2" id="verifyButton">✅ Проверить подпись</button>
+            <button type="button" class="btn btn-warning w-100 mt-2" id="encryptButton">🔒 Зашифровать</button>
+            <button type="button" class="btn btn-danger w-100 mt-2" id="decryptButton">🔓 Расшифровать</button>
         </form>
         <div class="mt-4">
             <h5>📜 Результат:</h5>
             <div class="result-box">
-                <strong>Хэш:</strong> <span id="hashResult" class="text-success"></span>
+                <strong>Подпись:</strong> <span id="signatureResult" class="text-success"></span>
+            </div>
+            <div class="result-box mt-2">
+                <strong>Проверка подписи:</strong> <span id="verificationResult" class="text-info"></span>
+            </div>
+            <div class="result-box mt-2">
+                <strong>Зашифрованный текст:</strong> <span id="encryptedResult" class="text-warning"></span>
+            </div>
+            <div class="result-box mt-2">
+                <strong>Расшифрованный текст:</strong> <span id="decryptedResult" class="text-danger"></span>
             </div>
         </div>
     </div>
 </div>
-
 <script>
-    document.getElementById('hashTextForm').addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const formData = new FormData(e.target);
-        const data = Object.fromEntries(formData.entries());
-
+    window.signText = async function() {
+        const text = document.getElementById('text').value;
+        const privateKey = document.getElementById('privateKey').value;
+        if (!text || !privateKey) {
+            alert('Введите текст и закрытый ключ');
+            return;
+        }
         try {
-            const response = await fetch('/hash', {
+            const response = await fetch('/eds-calculation', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data)
+                body: JSON.stringify({ text, privateKey })
             });
             const result = await response.json();
             if (response.ok) {
-                document.getElementById('hashResult').innerText = result.hash;
+                document.getElementById('signatureResult').innerText = result.signature;
             } else {
                 alert('Ошибка: ' + result.error);
             }
         } catch (error) {
             alert('Произошла ошибка: ' + error.message);
         }
-    });
+    };
+
+    window.verifySignature = async function() {
+        const text = document.getElementById('text').value;
+        const signature = document.getElementById('signatureResult').innerText;
+        const publicKey = document.getElementById('publicKey').value;
+        if (!text || !signature || !publicKey) {
+            alert('Введите текст, подпись и публичный ключ!');
+            return;
+        }
+        try {
+            const response = await fetch('/eds-verification', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text, signature, publicKey })
+            });
+            const result = await response.json();
+            document.getElementById('verificationResult').innerText = result.isVerified ? '✅ Подпись верна' : '❌ Подпись не совпадает';
+        } catch (error) {
+            alert('Ошибка при проверке подписи: ' + error.message);
+        }
+    };
+
+    window.encryptText = async function() {
+        const text = document.getElementById('text').value;
+        const privateKey = document.getElementById('privateKey').value;
+        if (!text || !privateKey) {
+            alert('Введите текст и закрытый ключ');
+            return;
+        }
+        try {
+            const response = await fetch('/eds-encrypt', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text, privateKey })
+            });
+            const result = await response.json();
+            if (response.ok) {
+                document.getElementById('encryptedResult').innerText = result.encrypted;
+            } else {
+                alert('Ошибка: ' + result.error);
+            }
+        } catch (error) {
+            alert('Произошла ошибка: ' + error.message);
+        }
+    };
+
+    window.decryptText = async function() {
+        const encryptedText = document.getElementById('encryptedResult').innerText;
+        const publicKey = document.getElementById('publicKey').value;
+        if (!encryptedText || !publicKey) {
+            alert('Введите зашифрованный текст и публичный ключ');
+            return;
+        }
+        try {
+            const response = await fetch('/eds-decrypt', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ encryptedText, publicKey })
+            });
+            const result = await response.json();
+            if (response.ok) {
+                document.getElementById('decryptedResult').innerText = result.decrypted;
+            } else {
+                alert('Ошибка: ' + result.error);
+            }
+        } catch (error) {
+            alert('Произошла ошибка: ' + error.message);
+        }
+    };
+
+    document.getElementById('signButton').addEventListener('click', signText);
+    document.getElementById('verifyButton').addEventListener('click', verifySignature);
+    document.getElementById('encryptButton').addEventListener('click', encryptText);
+    document.getElementById('decryptButton').addEventListener('click', decryptText);
 </script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>

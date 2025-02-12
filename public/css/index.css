@@ -9,7 +9,6 @@ body {
     width: 250px;
     background-color: #0069d9;
     color: white;
-    border-right: 1px solid #333;
     transition: all 0.3s ease;
     position: fixed;
     height: 100vh;
@@ -23,14 +22,21 @@ body {
     color: white;
     display: flex;
     align-items: center;
-    padding: 10px 15px;
+    padding: 10px 50px 10px 15px;
+    margin-left: 0;
     transition: background-color 0.3s ease;
     border-radius: 5px;
 }
 
-.sidebar .nav-link:hover,
+.sidebar .nav-link:hover
+{
+    background-color: #ffffff;
+
+}
 .sidebar .nav-link.active {
-    background-color: #1d2281;
+    background-color: #ffffff;
+    color: #0069d9;
+    font-weight: bold;
 }
 
 .content {
@@ -89,6 +95,7 @@ body {
     }
 }
 
+/* Бургер-меню */
 .burger-menu {
     position: fixed;
     top: 10px;
@@ -127,3 +134,4 @@ body {
 .overlay.show {
     display: block;
 }
+

@@ -52,7 +52,7 @@
             </div>
             <div class="col-md-6">
                 <h3>📁 Хэширование файла</h3>
-                <form id="hashFileForm" enctype="multipart/form-data">
+                <form id="hashFileForm">
                     <div class="mb-3">
                         <label for="file" class="form-label">Выберите файл:</label>
                         <input type="file" class="form-control" id="file" name="file" required>
@@ -75,17 +75,18 @@
         </div>
     </div>
 </div>
-
 <script>
+    // Обработка формы для текстового хеширования
     document.getElementById('hashTextForm').addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const formData = new FormData(e.target);
-        const data = Object.fromEntries(formData.entries());
+        e.preventDefault(); // Предотвращаем стандартную отправку формы
+        const text = document.getElementById('text').value;
+        const algorithm = document.getElementById('algorithm').value;
+
         try {
             const response = await fetch('/hash', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data)
+                body: JSON.stringify({ text, algorithm })
             });
             const result = await response.json();
             if (response.ok) {
@@ -98,9 +99,12 @@
         }
     });
 
+    // Обработка формы для файлового хеширования
     document.getElementById('hashFileForm').addEventListener('submit', async (e) => {
         e.preventDefault();
+
         const formData = new FormData(e.target);
+
         try {
             const response = await fetch('/hashFile', {
                 method: 'POST',

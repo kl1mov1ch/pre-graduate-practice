@@ -6,6 +6,7 @@ const HashController = {
         const hash = crypto.createHash(algorithm).update(text).digest('hex');
         res.json({ hash });
     },
+
     hashFile: async (req, res) => {
         const filePath = req.file.path;
         const algorithm = req.body.algorithm;

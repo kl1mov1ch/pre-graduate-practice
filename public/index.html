@@ -20,7 +20,7 @@
         </li>
         <li class="nav-item mb-2">
             <a href="#" class="nav-link" data-page="eds-calculation.html">
-                <i class="bi bi-key"></i> Расчет ЭЦП
+                <i class="bi bi-key"></i> ЭЦП
             </a>
         </li>
         <li class="nav-item mb-2">
@@ -52,19 +52,26 @@
 
     burgerMenu.addEventListener('click', toggleMenu);
     overlay.addEventListener('click', toggleMenu);
+
+
     document.querySelectorAll('.nav-link').forEach(link => {
-        link.addEventListener('click', (e) => {
+        link.addEventListener('click', async (e) => {
             e.preventDefault();
+
             const page = link.getAttribute('data-page');
-            loadPage(page);
+            await loadPage(page);
+
+
             if (window.innerWidth <= 576) {
                 sidebar.classList.remove('show');
                 overlay.classList.remove('show');
             }
+
             document.querySelectorAll('.nav-link').forEach(item => item.classList.remove('active'));
             link.classList.add('active');
         });
     });
+
     async function loadPage(page) {
         try {
             const response = await fetch(page);
@@ -126,6 +133,20 @@
             });
         }
     }
+    const kayPairForm = document.getElementById('generateKeyPairForm');
+    if (kayPairForm) {
+        kayPairForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData(kayPairForm);
+            const response = await fetch('/generate-key-pair', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(Object.fromEntries(formData))
+            });
+            const result = await response.json();
+            document.getElementById('hashResult').innerText = result.hash;
+        });
+        }
 </script>
 </body>
 </html>
