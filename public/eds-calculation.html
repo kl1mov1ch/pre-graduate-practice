@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Генератор хэша</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.3/font/bootstrap-icons.css">
+    <style>
+        body {
+            background-color: #f8f9fa;
+        }
+        .card {
+            border-radius: 15px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            background: #fff;
+        }
+
+        .result-box {
+            background: #e9ecef;
+            padding: 10px;
+            border-radius: 10px;
+            word-wrap: break-word;
+        }
+        .form-label {
+            font-weight: 500;
+        }
+        .form-control, .form-select {
+            border-radius: 10px;
+            padding: 10px;
+        }
+        .text-success {
+            color: #28a745 !important;
+        }
+        .text-info {
+            color: #17a2b8 !important;
+        }
+        .text-danger {
+            color: #dc3545 !important;
+        }
+    </style>
+</head>
+<body class="bg-light">
+<div class="container py-5">
+    <div class="card shadow p-4">
+        <h1 class="text-center mb-4">🔐 Генератор хэша</h1>
+        <form id="hashTextForm">
+            <div class="mb-3">
+                <label for="text" class="form-label">Введите текст:</label>
+                <textarea class="form-control" id="text" name="text" rows="3" required></textarea>
+            </div>
+            <div class="mb-3">
+                <label for="algorithm" class="form-label">Выберите алгоритм:</label>
+                <select class="form-select" id="algorithm" name="algorithm" required>
+                    <option value="sha256">SHA-256</option>
+                    <option value="sha512">SHA-512</option>
+                    <option value="md5">MD5</option>
+                </select>
+            </div>
+            <button type="submit" class="btn btn-primary w-100">🔑 Сгенерировать хэш</button>
+        </form>
+        <div class="mt-4">
+            <h5>📜 Результат:</h5>
+            <div class="result-box">
+                <strong>Хэш:</strong> <span id="hashResult" class="text-success"></span>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.getElementById('hashTextForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const formData = new FormData(e.target);
+        const data = Object.fromEntries(formData.entries());
+
+        try {
+            const response = await fetch('/hash', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            const result = await response.json();
+            if (response.ok) {
+                document.getElementById('hashResult').innerText = result.hash;
+            } else {
+                alert('Ошибка: ' + result.error);
+            }
+        } catch (error) {
+            alert('Произошла ошибка: ' + error.message);
+        }
+    });
+</script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
