@@ -1,17 +1,19 @@
+const fs = require('fs');
+const path = require('path');
 const crypto = require('crypto');
-const { exec } = require('child_process');
 
 const EDSController = {
-    eds_calculation: async (req, res) => {
+    edsCalculation: async (req, res) => {
+        const { text, privateKey } = req.body;
+
+        if (!text || !privateKey) {
+            return res.status(400).json({ error: 'Missing required parameters: text and privateKey' });
+        }
+
         try {
-            const { text, privateKey } = req.body;
-
-            if (!text || !privateKey) {
-                return res.status(400).json({ error: 'Missing required parameters: text and privateKey' });
-            }
-
             const sign = crypto.createSign('SHA256');
             sign.update(text);
+
             let signature;
             try {
                 signature = sign.sign(privateKey, 'hex');
@@ -20,66 +22,48 @@ const EDSController = {
             }
 
             res.json({ signature });
-
         } catch (error) {
             console.error('Error during EDS calculation:', error);
             res.status(500).json({ error: 'Internal server error' });
         }
     },
 
-    eds_verification: async (req, res) => {
+    edsVerification: async (req, res) => {
+        const { text, signature, publicKey } = req.body;
+
+        if (!text || !signature || !publicKey) {
+            return res.status(400).json({ error: 'Missing required parameters: text, signature, and publicKey' });
+        }
+
         try {
-            const { text, signature, publicKey } = req.body;
-
-            if (!text || !signature || !publicKey) {
-                return res.status(400).json({ error: 'Missing required parameters: text, signature, and publicKey' });
-            }
-
             const verify = crypto.createVerify('SHA256');
             verify.update(text);
+
             const isVerified = verify.verify(publicKey, signature, 'hex');
-
             res.json({ isVerified });
-
         } catch (error) {
             console.error('Error during EDS verification:', error);
             res.status(500).json({ error: 'Internal server error' });
         }
     },
 
-    eds_encrypt: async (req, res) => {
+    getKeyPairs: async (req, res) => {
+        const databasePath = ('./models/database.json');
+
         try {
-            const { text, privateKey } = req.body;
+            const data = fs.readFileSync(databasePath, 'utf8');
+            const database = JSON.parse(data);
 
-            if (!text || !privateKey) {
-                return res.status(400).json({ error: 'Missing required parameters: text and privateKey' });
-            }
+            const keyPairs = Object.entries(database).map(([id, keys]) => ({
+                id,
+                publicKey: keys.publicKey,
+                privateKey: keys.privateKey,
+            }));
 
-            const encrypted = crypto.privateEncrypt(privateKey, Buffer.from(text)).toString('hex');
-
-            res.json({ encrypted });
-
+            res.json(keyPairs);
         } catch (error) {
-            console.error('Error during encryption:', error);
-            res.status(500).json({ error: 'Internal server error' });
-        }
-    },
-
-    eds_decrypt: async (req, res) => {
-        try {
-            const { encryptedText, publicKey } = req.body;
-
-            if (!encryptedText || !publicKey) {
-                return res.status(400).json({ error: 'Missing required parameters: encryptedText and publicKey' });
-            }
-
-            const decrypted = crypto.publicDecrypt(publicKey, Buffer.from(encryptedText, 'hex')).toString();
-
-            res.json({ decrypted });
-
-        } catch (error) {
-            console.error('Error during decryption:', error);
-            res.status(500).json({ error: 'Internal server error' });
+            console.error('Error loading key pairs:', error);
+            res.status(500).json({ error: 'Failed to load key pairs' });
         }
     },
 };

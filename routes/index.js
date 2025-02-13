@@ -8,18 +8,20 @@ const upload = multer({
     limits: { fileSize: 10 * 1024 * 1024 }
 });
 
-// Роуты для шифрования и дешифрования
 router.post('/encrypt', CiphersController.encryptText);
 router.post('/decrypt', CiphersController.decryptText);
+router.post('/generate-key', CiphersController.generateKey);
+router.get('/get-keys', CiphersController.getKeys);
 
-// Роуты для работы с ЭЦП (встроенный модуль crypto)
-router.post('/eds-calculation', EDSController.eds_calculation);
-router.post('/eds-verification', EDSController.eds_verification);
+router.post('/eds-calculation', EDSController.edsCalculation);
+router.post('/eds-verification', EDSController.edsVerification);
 
 // Роуты для хеширования
 router.post('/hash', HashController.hashing);
 router.post('/hashFile', upload.single('file'), HashController.hashFile);
 
 router.post('/generate-key-pair', TheKeyPairController.generateKeyPair);
+router.get('/get-key-pairs', EDSController.getKeyPairs);
+
 
 module.exports = router;

@@ -15,6 +15,7 @@
     </style>
 </head>
 <body class="bg-light">
+<div id="header-placeholder"></div>
 <div class="container py-5">
     <div class="card shadow p-4">
         <h1 class="text-center mb-4">🔐 ЭЦП Генератор и Проверка</h1>
@@ -24,17 +25,24 @@
                 <textarea class="form-control" id="text" name="text" rows="3" required></textarea>
             </div>
             <div class="mb-3">
+                <label class="form-label">Выберите пару ключей:</label>
+                <select class="form-select" id="keyPairSelect" onchange="loadSelectedKeys()">
+                    <option value="">Выберите пару ключей...</option>
+                </select>
+            </div>
+            <div class="mb-3">
+                <button type="button" class="btn btn-secondary w-100" onclick="loadLatestKeyPair()">🔄 Загрузить последнюю пару ключей</button>
+            </div>
+            <div class="mb-3">
                 <label class="form-label">Закрытый ключ (для подписи):</label>
-                <textarea class="form-control" id="privateKey" name="privateKey" rows="3"></textarea>
+                <textarea class="form-control" id="privateKey" name="privateKey" rows="3" readonly></textarea>
             </div>
             <div class="mb-3">
                 <label class="form-label">Публичный ключ (для проверки):</label>
-                <textarea class="form-control" id="publicKey" name="publicKey" rows="3"></textarea>
+                <textarea class="form-control" id="publicKey" name="publicKey" rows="3" readonly></textarea>
             </div>
-            <button type="button" class="btn btn-primary w-100" id="signButton">✍ Подписать</button>
-            <button type="button" class="btn btn-success w-100 mt-2" id="verifyButton">✅ Проверить подпись</button>
-            <button type="button" class="btn btn-warning w-100 mt-2" id="encryptButton">🔒 Зашифровать</button>
-            <button type="button" class="btn btn-danger w-100 mt-2" id="decryptButton">🔓 Расшифровать</button>
+            <button type="button" class="btn btn-primary w-100" onclick="signText()">✍ Подписать</button>
+            <button type="button" class="btn btn-success w-100 mt-2" onclick="verifySignature()">✅ Проверить подпись</button>
         </form>
         <div class="mt-4">
             <h5>📜 Результат:</h5>
@@ -44,17 +52,60 @@
             <div class="result-box mt-2">
                 <strong>Проверка подписи:</strong> <span id="verificationResult" class="text-info"></span>
             </div>
-            <div class="result-box mt-2">
-                <strong>Зашифрованный текст:</strong> <span id="encryptedResult" class="text-warning"></span>
-            </div>
-            <div class="result-box mt-2">
-                <strong>Расшифрованный текст:</strong> <span id="decryptedResult" class="text-danger"></span>
-            </div>
         </div>
     </div>
+    <div id="footer-placeholder"></div>
 </div>
+
 <script>
-    window.signText = async function() {
+    async function loadKeyPairs() {
+        try {
+            const response = await fetch('/get-key-pairs');
+            const keyPairs = await response.json();
+            const selectElement = document.getElementById('keyPairSelect');
+            selectElement.innerHTML = '<option value="">Выберите пару ключей...</option>';
+            keyPairs.forEach(pair => {
+                const option = document.createElement('option');
+                option.value = pair.id;
+                option.text = `ID: ${pair.id}`;
+                selectElement.appendChild(option);
+            });
+        } catch (error) {
+            alert('Ошибка при загрузке пар ключей: ' + error.message);
+        }
+    }
+
+    async function loadLatestKeyPair() {
+        try {
+            const response = await fetch('/get-key-pairs');
+            const keyPairs = await response.json();
+            if (keyPairs.length === 0) {
+                alert('Нет доступных пар ключей.');
+                return;
+            }
+            const latestPair = keyPairs[keyPairs.length - 1];
+            document.getElementById('privateKey').value = latestPair.privateKey;
+            document.getElementById('publicKey').value = latestPair.publicKey;
+        } catch (error) {
+            alert('Ошибка при загрузке последней пары ключей: ' + error.message);
+        }
+    }
+    function loadSelectedKeys() {
+        const selectedId = document.getElementById('keyPairSelect').value;
+        if (!selectedId) return;
+        const keyPairs = Array.from(document.getElementById('keyPairSelect').options).slice(1);
+        const selectedPair = keyPairs.find(option => option.value === selectedId);
+        if (selectedPair) {
+            const pairData = JSON.parse(selectedPair.getAttribute('data-keys'));
+            document.getElementById('privateKey').value = pairData.privateKey;
+            document.getElementById('publicKey').value = pairData.publicKey;
+        }
+    }
+    window.onload = () => {
+        loadKeyPairs();
+    };
+
+    async function signText() {
         const text = document.getElementById('text').value;
         const privateKey = document.getElementById('privateKey').value;
         if (!text || !privateKey) {
@@ -76,9 +127,9 @@
         } catch (error) {
             alert('Произошла ошибка: ' + error.message);
         }
-    };
+    }
 
-    window.verifySignature = async function() {
+    async function verifySignature() {
         const text = document.getElementById('text').value;
         const signature = document.getElementById('signatureResult').innerText;
         const publicKey = document.getElementById('publicKey').value;
@@ -97,60 +148,21 @@
         } catch (error) {
             alert('Ошибка при проверке подписи: ' + error.message);
         }
-    };
+    }
 
-    window.encryptText = async function() {
-        const text = document.getElementById('text').value;
-        const privateKey = document.getElementById('privateKey').value;
-        if (!text || !privateKey) {
-            alert('Введите текст и закрытый ключ');
-            return;
-        }
-        try {
-            const response = await fetch('/eds-encrypt', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ text, privateKey })
+    function loadHTMLFile(url, placeholderId) {
+        fetch(url)
+            .then(response => response.text())
+            .then(data => {
+                document.getElementById(placeholderId).innerHTML = data;
+            })
+            .catch(error => {
+                console.error('Ошибка при загрузке файла:', error);
             });
-            const result = await response.json();
-            if (response.ok) {
-                document.getElementById('encryptedResult').innerText = result.encrypted;
-            } else {
-                alert('Ошибка: ' + result.error);
-            }
-        } catch (error) {
-            alert('Произошла ошибка: ' + error.message);
-        }
-    };
+    }
 
-    window.decryptText = async function() {
-        const encryptedText = document.getElementById('encryptedResult').innerText;
-        const publicKey = document.getElementById('publicKey').value;
-        if (!encryptedText || !publicKey) {
-            alert('Введите зашифрованный текст и публичный ключ');
-            return;
-        }
-        try {
-            const response = await fetch('/eds-decrypt', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ encryptedText, publicKey })
-            });
-            const result = await response.json();
-            if (response.ok) {
-                document.getElementById('decryptedResult').innerText = result.decrypted;
-            } else {
-                alert('Ошибка: ' + result.error);
-            }
-        } catch (error) {
-            alert('Произошла ошибка: ' + error.message);
-        }
-    };
-
-    document.getElementById('signButton').addEventListener('click', signText);
-    document.getElementById('verifyButton').addEventListener('click', verifySignature);
-    document.getElementById('encryptButton').addEventListener('click', encryptText);
-    document.getElementById('decryptButton').addEventListener('click', decryptText);
+    loadHTMLFile('./components/header.html', 'header-placeholder');
+    loadHTMLFile('./components/footer.html', 'footer-placeholder');
 </script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>

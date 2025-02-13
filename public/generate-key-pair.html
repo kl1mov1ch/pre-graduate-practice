@@ -32,6 +32,7 @@
     </style>
 </head>
 <body class="bg-light">
+<div id="header-placeholder"></div>
 <div class="container py-5">
     <div class="card shadow p-4">
         <h1 class="text-center mb-4">🔑 Генерация пары ключей</h1>
@@ -45,8 +46,19 @@
                 </select>
             </div>
             <div class="mb-3">
-                <label for="keySize" class="form-label">Размер ключа (для RSA):</label>
-                <input type="number" class="form-control" id="keySize" name="keySize" placeholder="Например, 2048" min="1024" max="4096">
+                <label class="form-label">Размер ключа (для RSA):</label>
+                <div class="form-check">
+                    <input class="form-check-input" type="radio" name="keySize" id="keySize1024" value="1024" required>
+                    <label class="form-check-label" for="keySize1024">1024 бит</label>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" type="radio" name="keySize" id="keySize2048" value="2048" checked required>
+                    <label class="form-check-label" for="keySize2048">2048 бит</label>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" type="radio" name="keySize" id="keySize4096" value="4096" required>
+                    <label class="form-check-label" for="keySize4096">4096 бит</label>
+                </div>
             </div>
             <button type="submit" class="btn btn-primary btn-block">🔑 Сгенерировать пару ключей</button>
         </form>
@@ -62,21 +74,29 @@
             </div>
         </div>
     </div>
+    <div id="footer-placeholder"></div>
 </div>
 <script>
     document.getElementById('generateKeyPairForm').addEventListener('submit', async (e) => {
         e.preventDefault();
 
         const algorithm = document.getElementById('algorithm').value;
-        const keySize = document.getElementById('keySize').value;
 
-        if (algorithm === 'rsa' && (!keySize || keySize < 1024 || keySize > 4096)) {
-            alert('Для алгоритма RSA укажите размер ключа от 1024 до 4096 бит.');
+        const keySizeRadios = document.getElementsByName('keySize');
+        let keySize = null;
+        for (let i = 0; i < keySizeRadios.length; i++) {
+            if (keySizeRadios[i].checked) {
+                keySize = keySizeRadios[i].value;
+                break;
+            }
+        }
+
+        if (algorithm === 'rsa' && !keySize) {
+            alert('Для алгоритма RSA необходимо выбрать размер ключа.');
             return;
         }
 
         try {
-            // Отправляем POST-запрос на сервер
             const response = await fetch('/generate-key-pair', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -84,8 +104,8 @@
             });
 
             const result = await response.json();
+
             if (response.ok) {
-                // Выводим результаты в соответствующие элементы
                 document.getElementById('privateKeyResult').textContent = result.privateKey || 'Приватный ключ не сгенерирован';
                 document.getElementById('publicKeyResult').textContent = result.publicKey || 'Публичный ключ не сгенерирован';
             } else {
@@ -95,6 +115,20 @@
             alert('Произошла ошибка при отправке запроса: ' + error.message);
         }
     });
+
+    function loadHTMLFile(url, placeholderId) {
+        fetch(url)
+            .then(response => response.text())
+            .then(data => {
+                document.getElementById(placeholderId).innerHTML = data;
+            })
+            .catch(error => {
+                console.error('Ошибка при загрузке файла:', error);
+            });
+    }
+
+    loadHTMLFile('./components/header.html', 'header-placeholder');
+    loadHTMLFile('./components/footer.html', 'footer-placeholder');
 </script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
 </body>

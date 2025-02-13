@@ -7,20 +7,27 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 </head>
 <body class="bg-light">
+<div id="header-placeholder"></div>
 <div class="container py-5">
     <div class="card shadow p-4">
-        <h1 class="text-center mb-4">🔒 Шифрование и Расшифровка</h1>
+        <h1 class="text-center mb-4">🔒 Зашифрование и Расшифрование</h1>
         <div class="row">
             <div class="col-md-6">
-                <h3>🔑 Шифрование</h3>
+                <h3>🔑 Зашифрование </h3>
                 <form id="encryptForm">
                     <div class="mb-3">
                         <label for="text" class="form-label">Текст</label>
                         <input type="text" class="form-control" id="text" name="text" required>
                     </div>
                     <div class="mb-3">
-                        <label for="key" class="form-label">Ключ (32 шестнадцатеричных символа)</label>
-                        <input type="text" class="form-control" id="key" name="key" required>
+                        <label for="key" class="form-label">Ключ</label>
+                        <div class="input-group">
+                            <select class="form-select" id="keySelect" name="key">
+                                <option value="">Выберите ключ...</option>
+                            </select>
+                                <button type="button" class="btn btn-primary w-auto" onclick="generateNewKey()">+ Сгенерировать ключ</button>
+                        </div>
+
                     </div>
                     <div class="mb-3">
                         <label for="algorithm" class="form-label">Алгоритм</label>
@@ -30,7 +37,7 @@
                             <option value="aes-128-cbc">AES-128-CBC</option>
                         </select>
                     </div>
-                    <button type="submit" class="btn btn-primary w-100">🔐 Зашифрование</button>
+                    <button type="submit" class="btn btn-primary w-100">🔐 Зашифровать</button>
                 </form>
                 <div class="mt-4">
                     <h5>📜 Результат</h5>
@@ -39,7 +46,7 @@
                 </div>
             </div>
             <div class="col-md-6">
-                <h3>🔓 Расшифровка</h3>
+                <h3>🔓 Расшифрование</h3>
                 <form id="decryptForm">
                     <div class="mb-3">
                         <label for="encryptedText" class="form-label">Зашифрованный текст</label>
@@ -47,7 +54,12 @@
                     </div>
                     <div class="mb-3">
                         <label for="decryptKey" class="form-label">Ключ</label>
-                        <input type="text" class="form-control" id="decryptKey" name="key" required>
+                        <div class="input-group">
+                            <select class="form-select" id="decryptKeySelect" name="key">
+                                <option value="">Выберите ключ...</option>
+                            </select>
+                            <button type="button" class="btn btn-primary w-auto" onclick="generateNewKey()">+ Сгенерировать ключ</button>
+                        </div>
                     </div>
                     <div class="mb-3">
                         <label for="decryptAlgorithm" class="form-label">Алгоритм</label>
@@ -61,17 +73,68 @@
                         <label for="iv" class="form-label">IV</label>
                         <input type="text" class="form-control" id="iv" name="iv" required>
                     </div>
-                    <button type="submit" class="btn btn-secondary w-100">🔓 Расшифрование</button>
+                    <button type="submit" class="btn btn-secondary w-100">🔓 Расшифровать</button>
                 </form>
                 <div class="mt-4">
                     <h5>📖 Расшифрованный текст</h5>
-                    <p><strong>Результат:</strong> <span id="decryptedResult" class="text-danger"></span></p>
+                    <p><strong>Результат:</strong> <span id="decryptedResult" class="text-success"></span></p>
+                    <p id="decryptError" class="text-danger small"></p>
                 </div>
             </div>
         </div>
     </div>
+    <div id="footer-placeholder"></div>
 </div>
+
 <script>
+    async function loadKeys() {
+        try {
+            const response = await fetch('/get-keys');
+            const keys = await response.json();
+            const encryptKeySelect = document.getElementById('keySelect');
+            const decryptKeySelect = document.getElementById('decryptKeySelect');
+
+            encryptKeySelect.innerHTML = '<option value="">Выберите ключ...</option>';
+            decryptKeySelect.innerHTML = '<option value="">Выберите ключ...</option>';
+
+            keys.forEach(key => {
+                const option = document.createElement('option');
+                option.value = key.key;
+                option.text = `ID: ${key.id}, Key: ${key.key}`;
+                encryptKeySelect.add(option);
+                decryptKeySelect.add(option.cloneNode(true));
+            });
+        } catch (error) {
+            alert('Ошибка при загрузке ключей: ' + error.message);
+        }
+    }
+
+    async function generateNewKey() {
+        try {
+            const response = await fetch('/generate-key', { method: 'POST' });
+            if (!response.ok) {
+                throw new Error('Ошибка сервера при генерации ключа');
+            }
+            const newKey = await response.json();
+
+            const encryptKeySelect = document.getElementById('keySelect');
+            const decryptKeySelect = document.getElementById('decryptKeySelect');
+
+            const option = document.createElement('option');
+            option.value = newKey.key;
+            option.text = `ID: ${newKey.id}, Key: ${newKey.key}`;
+
+            encryptKeySelect.insertBefore(option, encryptKeySelect.firstChild.nextSibling);
+            decryptKeySelect.insertBefore(option.cloneNode(true), decryptKeySelect.firstChild.nextSibling);
+
+            encryptKeySelect.value = newKey.key;
+            decryptKeySelect.value = newKey.key;
+
+        } catch (error) {
+            alert('Ошибка при генерации нового ключа: ' + error.message);
+        }
+    }
+
     document.getElementById('encryptForm').addEventListener('submit', async (e) => {
         e.preventDefault();
         const formData = new FormData(e.target);
@@ -88,14 +151,52 @@
     document.getElementById('decryptForm').addEventListener('submit', async (e) => {
         e.preventDefault();
         const formData = new FormData(e.target);
-        const response = await fetch('/decrypt', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(Object.fromEntries(formData))
-        });
-        const result = await response.json();
-        document.getElementById('decryptedResult').innerText = result.decrypted;
+
+        try {
+            const response = await fetch('/decrypt', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(Object.fromEntries(formData))
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                document.getElementById('decryptedResult').innerText = '';
+                document.getElementById('decryptError').innerText = `Ошибка: ${errorData.error}`;
+                return;
+            }
+
+            const result = await response.json();
+
+            if (result.error) {
+                document.getElementById('decryptedResult').innerText = '';
+                document.getElementById('decryptError').innerText = `Ошибка: ${result.error}`;
+            } else {
+                document.getElementById('decryptError').innerText = '';
+                document.getElementById('decryptedResult').innerText = result.decrypted || 'Расшифрованный текст пуст';
+            }
+        } catch (error) {
+            document.getElementById('decryptedResult').innerText = '';
+            document.getElementById('decryptError').innerText = 'Произошла ошибка при расшифровании: ' + error.message;
+        }
     });
+
+    window.onload = () => {
+        loadKeys();
+    };
+    function loadHTMLFile(url, placeholderId) {
+        fetch(url)
+            .then(response => response.text())
+            .then(data => {
+                document.getElementById(placeholderId).innerHTML = data;
+            })
+            .catch(error => {
+                console.error('Ошибка при загрузке файла:', error);
+            });
+    }
+
+    loadHTMLFile('./components/header.html', 'header-placeholder');
+    loadHTMLFile('./components/footer.html', 'footer-placeholder');
 </script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
