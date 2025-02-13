@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const multer = require('multer'); // Импортируем multer
+const multer = require('multer');
 const { CiphersController, EDSController, HashController, TheKeyPairController } = require('../controllers/index');
 
 const upload = multer({
@@ -16,7 +16,6 @@ router.get('/get-keys', CiphersController.getKeys);
 router.post('/eds-calculation', EDSController.edsCalculation);
 router.post('/eds-verification', EDSController.edsVerification);
 
-// Роуты для хеширования
 router.post('/hash', HashController.hashing);
 router.post('/hashFile', upload.single('file'), HashController.hashFile);
 
