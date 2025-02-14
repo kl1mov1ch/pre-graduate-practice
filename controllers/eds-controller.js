@@ -2,7 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 
-const EDSController = {
+const EdsController = {
     edsCalculation: async (req, res) => {
         const { text, privateKey } = req.body;
 
@@ -68,4 +68,4 @@ const EDSController = {
     },
 };
 
-module.exports = EDSController;
+module.exports = EdsController;
