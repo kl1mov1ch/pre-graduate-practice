@@ -64,8 +64,8 @@ const CiphersController = {
     generateKey: async (req, res) => {
         try {
             const keyLength = Math.floor(Math.random() * (64 - 32 + 1)) + 32;
-            const key = crypto.randomBytes(keyLength / 2).toString('hex'); // Генерация ключа
-            const uniqueId = crypto.randomBytes(8).toString('hex'); // Уникальный ID для ключа
+            const key = crypto.randomBytes(keyLength / 2).toString('hex');
+            const uniqueId = crypto.randomBytes(8).toString('hex');
 
             const keyFilePath = ('./models/key.json');
             const keysDir = path.dirname(keyFilePath);
@@ -90,7 +90,7 @@ const CiphersController = {
     },
     getKeys: async (req, res) => {
         try {
-            const keyFilePath = ('./models/key.json'); // Путь к файлу с ключами
+            const keyFilePath = ('./models/key.json');
             if (!fs.existsSync(keyFilePath)) {
                 return res.json([]);
             }

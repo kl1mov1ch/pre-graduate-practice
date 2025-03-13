@@ -12,6 +12,22 @@
         .result-box { background: #e9ecef; padding: 10px; border-radius: 10px; word-wrap: break-word; }
         .form-label { font-weight: 500; }
         .form-control, .form-select { border-radius: 10px; padding: 10px; }
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
+            display: inline-block;
+            vertical-align: middle;
+            margin-left: 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
     </style>
 </head>
 <body class="bg-light">
@@ -19,10 +35,21 @@
 <div class="container py-5">
     <div class="card shadow p-4">
         <h1 class="text-center mb-4">🔐 Генерация и проверка ЭЦП</h1>
+        <div class="mb-3">
+            <label class="form-label">Выберите алгоритм:</label>
+            <select class="form-select" id="algorithmSelect" onchange="loadKeyPairs()">
+                <option value="openssl">OpenSSL</option>
+                <option value="bee2">BEE2</option>
+            </select>
+        </div>
         <form id="edsForm">
             <div class="mb-3">
                 <label class="form-label">Введите текст для подписи:</label>
                 <textarea class="form-control" id="text" name="text" rows="3" required></textarea>
+            </div>
+            <div class="mb-3" id="passwordSection" style="display: none;">
+                <label class="form-label">Пароль (только для BEE2):</label>
+                <input type="password" minlength="6" class="form-control" id="password" name="password" placeholder="Введите пароль">
             </div>
             <div class="mb-3">
                 <label class="form-label">Выберите личный ключ для подписи :</label>
@@ -33,7 +60,7 @@
             <div class="mb-3">
                 <button type="button" class="btn btn-secondary w-100" onclick="loadLatestKeyPair()">🔄 Загрузить последнюю пару ключей</button>
             </div>
-            <div class="mb-3">
+            <div class="mb-3" style="display: none">
                 <label class="form-label">Личный ключ (для подписи):</label>
                 <textarea class="form-control" id="privateKey" name="privateKey" rows="3" readonly></textarea>
             </div>
@@ -41,8 +68,14 @@
                 <label class="form-label">Открытый ключ (для проверки):</label>
                 <textarea class="form-control" id="publicKey" name="publicKey" rows="3" readonly></textarea>
             </div>
-            <button type="button" class="btn btn-primary w-100" onclick="signText()">✍ Подписать</button>
-            <button type="button" class="btn btn-success w-100 mt-2" onclick="verifySignature()">✅ Проверить подпись</button>
+            <button type="button" class="btn btn-primary w-100" onclick="signText()" id="signButton">
+                ✍ Подписать
+                <span class="loader" id="signLoader" style="display: none;"></span>
+            </button>
+            <button type="button" class="btn btn-success w-100 mt-2" onclick="verifySignature()" id="verifyButton">
+                ✅ Проверить подпись
+                <span class="loader" id="verifyLoader" style="display: none;"></span>
+            </button>
         </form>
         <div class="mt-4">
             <h5>📜 Результат:</h5>
@@ -59,16 +92,26 @@
 
 <script>
     async function loadKeyPairs() {
+        const algorithm = document.getElementById('algorithmSelect').value;
         try {
             const response = await fetch('/get-key-pairs');
             const keyPairs = await response.json();
             const selectElement = document.getElementById('keyPairSelect');
             selectElement.innerHTML = '<option value="">Выберите пару ключей...</option>';
             keyPairs.forEach(pair => {
-                const option = document.createElement('option');
-                option.value = pair.id;
-                option.text = `ID: ${pair.id}`;
-                selectElement.appendChild(option);
+                if (pair.id.endsWith('BEE2') && algorithm === 'bee2') {
+                    const option = document.createElement('option');
+                    option.value = pair.id;
+                    option.text = `ID: ${pair.id}`;
+                    option.setAttribute('data-keys', JSON.stringify({ publicKey: pair.publicKey, privateKey: pair.privateKey }));
+                    selectElement.appendChild(option);
+                } else if (!pair.id.endsWith('BEE2') && algorithm === 'openssl') {
+                    const option = document.createElement('option');
+                    option.value = pair.id;
+                    option.text = `ID: ${pair.id}`;
+                    option.setAttribute('data-keys', JSON.stringify({ publicKey: pair.publicKey, privateKey: pair.privateKey }));
+                    selectElement.appendChild(option);
+                }
             });
         } catch (error) {
             alert('Ошибка при загрузке пар ключей: ' + error.message);
@@ -106,17 +149,29 @@
     };
 
     async function signText() {
+        const signButton = document.getElementById('signButton');
+        const signLoader = document.getElementById('signLoader');
+
+        signButton.disabled = true;
+        signLoader.style.display = 'inline-block';
+
+        const algorithm = document.getElementById('algorithmSelect').value;
         const text = document.getElementById('text').value;
         const privateKey = document.getElementById('privateKey').value;
+        const password = document.getElementById('password').value;
+
         if (!text || !privateKey) {
             alert('Введите текст и закрытый ключ');
+            signButton.disabled = false;
+            signLoader.style.display = 'none';
             return;
         }
+
         try {
             const response = await fetch('/eds-calculation', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ text, privateKey })
+                body: JSON.stringify({ text, privateKey, algorithm, password })
             });
             const result = await response.json();
             if (response.ok) {
@@ -126,29 +181,58 @@
             }
         } catch (error) {
             alert('Произошла ошибка: ' + error.message);
+        } finally {
+            signButton.disabled = false;
+            signLoader.style.display = 'none';
         }
     }
 
     async function verifySignature() {
+        const verifyButton = document.getElementById('verifyButton');
+        const verifyLoader = document.getElementById('verifyLoader');
+
+        verifyButton.disabled = true;
+        verifyLoader.style.display = 'inline-block';
+
+        const algorithm = document.getElementById('algorithmSelect').value;
         const text = document.getElementById('text').value;
         const signature = document.getElementById('signatureResult').innerText;
         const publicKey = document.getElementById('publicKey').value;
+        const password = document.getElementById('password').value;
+
         if (!text || !signature || !publicKey) {
             alert('Введите текст, подпись и публичный ключ!');
+            verifyButton.disabled = false;
+            verifyLoader.style.display = 'none';
             return;
         }
+
         try {
             const response = await fetch('/eds-verification', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ text, signature, publicKey })
+                body: JSON.stringify({ text, signature, publicKey, algorithm, password })
             });
             const result = await response.json();
             document.getElementById('verificationResult').innerText = result.isVerified ? '✅ Подпись верна' : '❌ Подпись не совпадает';
         } catch (error) {
             alert('Ошибка при проверке подписи: ' + error.message);
+        } finally {
+            verifyButton.disabled = false;
+            verifyLoader.style.display = 'none';
         }
     }
+
+    document.getElementById('algorithmSelect').addEventListener('change', () => {
+        const algorithm = document.getElementById('algorithmSelect').value;
+        const passwordSection = document.getElementById('passwordSection');
+
+        if (algorithm === 'bee2') {
+            passwordSection.style.display = 'block';
+        } else {
+            passwordSection.style.display = 'none';
+        }
+    });
 
     function loadHTMLFile(url, placeholderId) {
         fetch(url)

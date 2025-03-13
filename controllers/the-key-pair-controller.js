@@ -53,6 +53,7 @@ function saveKeyPairToDatabase(id, publicKey, privateKey) {
             database = JSON.parse(data);
         }
     } catch (error) {
+
         console.error('Error reading database file:', error);
     }
 

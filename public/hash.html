@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -21,12 +21,76 @@
         .btn-block {
             width: 100%;
         }
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 60px;
+            height: 34px;
+        }
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: 0.4s;
+            border-radius: 34px;
+        }
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 26px;
+            width: 26px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: 0.4s;
+            border-radius: 50%;
+        }
+        input:checked + .slider {
+            background-color: #2196F3;
+        }
+        input:checked + .slider:before {
+            transform: translateX(26px);
+        }
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
+            display: inline-block;
+            vertical-align: middle;
+            margin-left: 10px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
     </style>
 </head>
 <body class="bg-light">
 <div id="header-placeholder"></div>
 <div class="container py-5">
-    <div class="card shadow p-4">
+    <div class="card shadow p-4 d-flex">
+        <div class="mb-3 d-flex">
+            <div class="d-flex ms-auto">
+                <span class="me-2 fs-5 fw-semibold">OpenSSL</span>
+                <label class="switch ">
+                    <input type="checkbox" id="libraryToggle">
+                    <span class="slider"></span>
+                </label>
+                <span class="ms-2 fs-5 fw-semibold">Bee2</span>
+            </div>
+        </div>
         <h1 class="text-center mb-4">🔐 Генератор Хэшей</h1>
         <div class="row">
             <div class="col-md-6">
@@ -44,11 +108,15 @@
                             <option value="md5">MD5</option>
                         </select>
                     </div>
-                    <button type="submit" class="btn btn-primary btn-block">🔑 Сгенерировать хэш</button>
+                    <button type="submit" class="btn btn-primary btn-block" id="hashTextButton">
+                        🔑 Сгенерировать хэш
+                        <span class="loader" id="hashTextLoader" style="display: none;"></span>
+                    </button>
                 </form>
                 <div class="mt-4">
                     <h5>📜 Результат:</h5>
                     <p><strong>Хэш:</strong> <span id="hashResult" class="text-success"></span></p>
+                    <p class="text-danger" id="hashError"></p>
                 </div>
             </div>
             <div class="col-md-6">
@@ -56,7 +124,7 @@
                 <form id="hashFileForm">
                     <div class="mb-3">
                         <label for="file" class="form-label">Выберите файл:</label>
-                        <input type="file" class="form-control" id="file" name="file" required>
+                        <input type="file" class="form-control " id="file" name="file" required>
                     </div>
                     <div class="mb-3">
                         <label for="fileAlgorithm" class="form-label">Выберите алгоритм:</label>
@@ -64,13 +132,20 @@
                             <option value="sha256">SHA-256</option>
                             <option value="sha512">SHA-512</option>
                             <option value="md5">MD5</option>
+                            <option value="belt">belt</option>
+                            <option value="bash256">bash256</option>
+                            <option value="bash512">bash512</option>
                         </select>
                     </div>
-                    <button type="submit" class="btn btn-primary btn-block">🔑 Сгенерировать хэш файла</button>
+                    <button type="submit" class="btn btn-primary btn-block" id="hashFileButton">
+                        🔑 Сгенерировать хэш файла
+                        <span class="loader" id="hashFileLoader" style="display: none;"></span>
+                    </button>
                 </form>
                 <div class="mt-4">
                     <h5>📜 Результат:</h5>
                     <p><strong>Хэш:</strong> <span id="fileHashResult" class="text-success"></span></p>
+                    <p class="text-danger" id="fileHashError"></p>
                 </div>
             </div>
         </div>
@@ -78,48 +153,122 @@
     <div id="footer-placeholder"></div>
 </div>
 <script>
+    function updateAlgorithms() {
+        const isBee2 = document.getElementById('libraryToggle').checked;
+        const algorithmSelect = document.getElementById('algorithm');
+        const fileAlgorithmSelect = document.getElementById('fileAlgorithm');
+
+        if (isBee2) {
+            algorithmSelect.style.display = 'none';
+        } else {
+            algorithmSelect.style.display = 'block';
+        }
+
+        if (isBee2) {
+            Array.from(fileAlgorithmSelect.options).forEach(option => {
+                option.style.display = (option.value === 'belt' || option.value === 'bash256' || option.value === 'bash512') ? 'block' : 'none';
+            });
+        } else {
+            Array.from(fileAlgorithmSelect.options).forEach(option => {
+                option.style.display = (option.value === 'sha256' || option.value === 'md5' || option.value === 'sha512') ? 'block' : 'none';;
+            });
+        }
+    }
+
+    document.getElementById('libraryToggle').addEventListener('change', updateAlgorithms);
+
+    document.addEventListener('DOMContentLoaded', updateAlgorithms);
+
     document.getElementById('hashTextForm').addEventListener('submit', async (e) => {
         e.preventDefault();
-        const text = document.getElementById('text').value;
+
+        const hashTextButton = document.getElementById('hashTextButton');
+        const hashTextLoader = document.getElementById('hashTextLoader');
+
+        hashTextButton.disabled = true;
+        hashTextLoader.style.display = 'inline-block';
+
+        const library = document.getElementById('libraryToggle').checked ? 'bee2' : 'crypto';
+        const text = document.getElementById('text').value.trim();
         const algorithm = document.getElementById('algorithm').value;
 
+        if (!text) {
+            document.getElementById('hashError').textContent = 'Текст не может быть пустым.';
+            hashTextButton.disabled = false;
+            hashTextLoader.style.display = 'none';
+            return;
+        }
+
+        const endpoint = library === 'bee2' ? '/hashbel' : '/hash';
         try {
-            const response = await fetch('/hash', {
+            const response = await fetch(endpoint, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ text, algorithm })
             });
             const result = await response.json();
+
             if (response.ok) {
-                document.getElementById('hashResult').innerText = result.hash;
+                document.getElementById('hashResult').textContent = result.hash;
+                document.getElementById('hashError').textContent = '';
             } else {
-                alert('Ошибка генерации хэша: ' + result.error);
+                document.getElementById('hashError').textContent = `Ошибка: ${result.error}`;
             }
         } catch (error) {
-            alert('Произошла ошибка: ' + error.message);
+            document.getElementById('hashError').textContent = `Произошла ошибка: ${error.message}`;
+        } finally {
+            hashTextButton.disabled = false;
+            hashTextLoader.style.display = 'none';
         }
     });
 
     document.getElementById('hashFileForm').addEventListener('submit', async (e) => {
         e.preventDefault();
 
-        const formData = new FormData(e.target);
+        const hashFileButton = document.getElementById('hashFileButton');
+        const hashFileLoader = document.getElementById('hashFileLoader');
+
+        hashFileButton.disabled = true;
+        hashFileLoader.style.display = 'inline-block';
+
+        const library = document.getElementById('libraryToggle').checked ? 'bee2' : 'crypto';
+        const fileInput = document.getElementById('file');
+        const file = fileInput.files[0];
+        const algorithm = document.getElementById('fileAlgorithm').value;
+
+        if (!file) {
+            document.getElementById('fileHashError').textContent = 'Файл не выбран.';
+            hashFileButton.disabled = false;
+            hashFileLoader.style.display = 'none';
+            return;
+        }
+
+        const endpoint = library === 'bee2' ? '/hashFilebel' : '/hashFile';
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('algorithm', algorithm);
 
         try {
-            const response = await fetch('/hashFile', {
+            const response = await fetch(endpoint, {
                 method: 'POST',
                 body: formData
             });
             const result = await response.json();
+
             if (response.ok) {
-                document.getElementById('fileHashResult').innerText = result.hash;
+                document.getElementById('fileHashResult').textContent = result.hash;
+                document.getElementById('fileHashError').textContent = '';
             } else {
-                alert('Ошибка генерации хэша файла: ' + result.error);
+                document.getElementById('fileHashError').textContent = `Ошибка: ${result.error}`;
             }
         } catch (error) {
-            alert('Произошла ошибка: ' + error.message);
+            document.getElementById('fileHashError').textContent = `Произошла ошибка: ${error.message}`;
+        } finally {
+            hashFileButton.disabled = false;
+            hashFileLoader.style.display = 'none';
         }
     });
+
     function loadHTMLFile(url, placeholderId) {
         fetch(url)
             .then(response => response.text())
@@ -130,7 +279,6 @@
                 console.error('Ошибка при загрузке файла:', error);
             });
     }
-
     loadHTMLFile('./components/header.html', 'header-placeholder');
     loadHTMLFile('./components/footer.html', 'footer-placeholder');
 </script>
